@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate History Quiz Engine</title>
+    <style>
+        /* --- CORE VISUALS & THEME --- */
+        :root {
+            --primary: #00f7ff;
+            --secondary: #ff0055;
+            --accent: #ffee00;
+            --bg-deep: #050510;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-glow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; user-select: none; }
+
+        body {
+            background-color: var(--bg-deep);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* --- BACKGROUND VFX CANVAS --- */
+        #vfx-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+        }
+
+        /* --- MAIN UI CONTAINER --- */
+        .app-container {
+            width: 95%;
+            max-width: 900px;
+            height: 85vh;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 25px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: introPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes introPop {
+            0% { opacity: 0; transform: scale(0.8) rotateX(10deg); }
+            100% { opacity: 1; transform: scale(1) rotateX(0deg); }
+        }
+
+        /* --- HEADER --- */
+        header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: white;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        .status-bar {
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-top: 5px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            flex: 1;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            padding: 30px;
+            overflow-y: auto;
+            align-items: center;
+        }
+
+        .screen.active {
+            display: flex;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- MENU BUTTONS (CHAPTERS) --- */
+        .grid-menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .chapter-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+            border: 1px solid var(--glass-border);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chapter-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--primary);
+            opacity: 0.5;
+            transition: 0.3s;
+        }
+
+        .chapter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 247, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .chapter-card:hover::before { opacity: 1; width: 100%; z-index: -1; }
+        .chapter-card h3 { font-size: 1.2rem; margin-bottom: 5px; z-index: 2; position: relative; }
+        .chapter-card p { font-size: 0.8rem; color: #aaa; z-index: 2; position: relative; }
+
+        .special-card { border-color: var(--secondary); }
+        .special-card::before { background: var(--secondary); }
+        
+        /* --- QUIZ AREA --- */
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            transition: width 0.4s ease;
+        }
+
+        .question-box {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .options-list { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 15px; }
+
+        .opt-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 18px 25px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .opt-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(5px); border-color: var(--primary); }
+        .opt-btn:active { transform: scale(0.98); }
+
+        .opt-btn.correct {
+            background: rgba(0, 255, 136, 0.2) !important;
+            border-color: #00ff88 !important;
+            color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            animation: pulseSuccess 0.5s;
+        }
+
+        .opt-btn.wrong {
+            background: rgba(255, 0, 85, 0.2) !important;
+            border-color: #ff0055 !important;
+            color: #ff0055;
+            animation: shake 0.4s;
+        }
+
+        @keyframes pulseSuccess { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+
+        /* --- RESULTS SCREEN --- */
+        .grade-circle {
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            border: 5px solid var(--glass-border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px auto;
+            text-shadow: 0 0 20px currentColor;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .grade-S { border-color: #ffee00; color: #ffee00; box-shadow: 0 0 30px rgba(255, 238, 0, 0.2); }
+        .grade-A { border-color: #00ff88; color: #00ff88; }
+        .grade-B { border-color: #00f7ff; color: #00f7ff; }
+        .grade-C { border-color: orange; color: orange; }
+        .grade-F { border-color: #ff0055; color: #ff0055; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-val { font-size: 1.5rem; font-weight: bold; }
+        .stat-label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; }
+
+        .action-btn {
+            background: linear-gradient(90deg, var(--primary), #00aaff);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 0 20px var(--primary);
+            transition: 0.3s;
+        }
+        .action-btn:hover { transform: scale(1.05); letter-spacing: 1px; }
+
+        /* --- LOADER --- */
+        #loading-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="vfx-canvas"></canvas>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: var(--primary);">Loading Chapter Data...</p>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <h1>History Master Class 9</h1>
+            <div class="status-bar" id="status-text">Select a module to begin</div>
+        </header>
+
+        <div id="screen-menu" class="screen active">
+            <h2 style="margin-bottom: 20px; color: #ddd;">Available Chapters</h2>
+            <div class="grid-menu">
+                <div class="chapter-card" onclick="Engine.loadChapter(1)">
+                    <h3>Ch 1: French Revolution</h3>
+                    <p>Storming of Bastille & The Estates</p>
+                </div>
+                <div class="chapter-card" onclick="Engine.loadChapter(2)">
+                    <h3>Ch 2: Socialism & Russia</h3>
+                    <p>Bolsheviks, Lenin & The Duma</p>
+                </div>
+                <div class="chapter-card" onclick="Engine.loadChapter(3)">
+                    <h3>Ch 3: Nazism & Hitler</h3>
+                    <p>Rise of Dictatorship & WWII</p>
+                </div>
+                <div class="chapter-card" onclick="Engine.loadChapter(4)">
+                    <h3>Ch 4: Forest Society</h3>
+                    <p>Colonialism & Scientific Forestry</p>
+                </div>
+                <div class="chapter-card" onclick="Engine.loadChapter(5)">
+                    <h3>Ch 5: Pastoralists</h3>
+                    <p>Nomadic Communities & Modernity</p>
+                </div>
+                <div class="chapter-card special-card" onclick="Engine.loadChapter('all')">
+                    <h3>♾️ GRAND MOCK TEST</h3>
+                    <p>Mix of All Chapters (50 Qs)</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-quiz" class="screen">
+            <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+            <div style="display:flex; justify-content:space-between; width:100%; max-width:700px; color:#888; margin-bottom:10px;">
+                <span id="q-number">Question 1</span>
+                <span id="score-live">Score: 0</span>
+            </div>
+            
+            <div class="question-box" id="q-text">Loading Question...</div>
+            
+            <div class="options-list" id="opt-container">
+                </div>
+        </div>
+
+        <div id="screen-results" class="screen">
+            <h2 style="font-size:2rem; margin-bottom:10px;">Quiz Complete!</h2>
+            <div class="grade-circle" id="final-grade">A</div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-val" id="final-score">0</div>
+                    <div class="stat-label">Total Score</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="final-percent">0%</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="final-correct">0</div>
+                    <div class="stat-label">Correct</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" id="final-wrong">0</div>
+                    <div class="stat-label">Wrong</div>
+                </div>
+            </div>
+            
+            <div id="remarks" style="color:#bbb; margin-bottom: 20px; font-style: italic;">Excellent work!</div>
+
+            <button class="action-btn" onclick="location.reload()">Return to Menu</button>
+        </div>
+    </div>
+
+    <script>
+        const AudioFX = {
+            ctx: new (window.AudioContext || window.webkitAudioContext)(),
+            
+            init: function() { if(this.ctx.state === 'suspended') this.ctx.resume(); },
+            
+            playTone: function(freq, type, duration, vol=0.1) {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+
+            click: function() { this.playTone(800, 'sine', 0.1); },
+            
+            correct: function() { 
+                // High pitch success chord
+                this.playTone(600, 'sine', 0.3);
+                setTimeout(() => this.playTone(800, 'sine', 0.4), 100);
+                setTimeout(() => this.playTone(1200, 'triangle', 0.5), 200);
+            },
+            
+            wrong: function() {
+                // Low pitch error buzz
+                this.playTone(150, 'sawtooth', 0.3);
+                setTimeout(() => this.playTone(100, 'sawtooth', 0.4), 100);
+            },
+
+            victory: function() {
+                // Fanfare
+                [523, 659, 784, 1046].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'square', 0.6, 0.2), i*150);
+                });
+            }
+        };
+    </script>
+
+    <script>
+        const VFX = {
+            canvas: document.getElementById('vfx-canvas'),
+            ctx: document.getElementById('vfx-canvas').getContext('2d'),
+            particles: [],
+            
+            init: function() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.createParticles();
+                this.animate();
+            },
+            
+            resize: function() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            },
+            
+            createParticles: function() {
+                for(let i=0; i<80; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        r: Math.random() * 2 + 1,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        color: Math.random() > 0.5 ? '#00f7ff' : '#ff0055'
+                    });
+                }
+            },
+
+            burst: function(x, y) {
+                // Explosion effect
+                for(let i=0; i<20; i++) {
+                    this.particles.push({
+                        x: x, y: y,
+                        r: Math.random() * 4 + 2,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        life: 1.0,
+                        color: '#ffee00'
+                    });
+                }
+            },
+            
+            animate: function() {
+                this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+                
+                this.particles.forEach((p, index) => {
+                    // Update
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    // Boundary wrap
+                    if(p.x < 0) p.x = this.canvas.width;
+                    if(p.x > this.canvas.width) p.x = 0;
+                    if(p.y < 0) p.y = this.canvas.height;
+                    if(p.y > this.canvas.height) p.y = 0;
+                    
+                    // Draw
+                    this.ctx.globalAlpha = p.life ? p.life : 0.4;
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                    this.ctx.fill();
+                    
+                    // Connect lines (Neural effect)
+                    this.particles.forEach(p2 => {
+                        let dx = p.x - p2.x;
+                        let dy = p.y - p2.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if(dist < 100 && !p.life && !p2.life) {
+                            this.ctx.strokeStyle = `rgba(100, 200, 255, ${0.1 - dist/1000})`;
+                            this.ctx.lineWidth = 0.5;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(p.x, p.y);
+                            this.ctx.lineTo(p2.x, p2.y);
+                            this.ctx.stroke();
+                        }
+                    });
+
+                    // Decay burst particles
+                    if(p.life) {
+                        p.life -= 0.05;
+                        p.r *= 0.9;
+                        if(p.life <= 0) this.particles.splice(index, 1);
+                    }
+                });
+                
+                requestAnimationFrame(() => this.animate());
+            }
+        };
+        VFX.init();
+    </script>
+
+    <script>
+        // Global DB storage (files will push to this)
+        window.historyDB = {};
+
+        const Engine = {
+            data: [],
+            currIndex: 0,
+            score: 0,
+            totalQ: 50,
+            
+            loadChapter: function(chId) {
+                AudioFX.click();
+                const overlay = document.getElementById('loading-overlay');
+                overlay.style.display = 'flex';
+                
+                // Dynamic Script Loader
+                if(chId === 'all') {
+                    // Load all 5 chapters
+                    let loaded = 0;
+                    for(let i=1; i<=5; i++) {
+                        this.injectScript(`ch${i}.js`, () => {
+                            loaded++;
+                            if(loaded === 5) this.startGame('all');
+                        });
+                    }
+                } else {
+                    this.injectScript(`ch${chId}.js`, () => {
+                        this.startGame(chId);
+                    });
+                }
+            },
+
+            injectScript: function(src, cb) {
+                if(document.querySelector(`script[src="${src}"]`)) {
+                    // Already loaded
+                    cb();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = cb;
+                script.onerror = () => {
+                    alert(`ERROR: Could not find ${src}. Please ensure the file exists in the folder.`);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                };
+                document.body.appendChild(script);
+            },
+
+            startGame: function(mode) {
+                let pool = [];
+                
+                // Aggregate questions
+                if(mode === 'all') {
+                    for(let k in window.historyDB) pool = pool.concat(window.historyDB[k]);
+                } else {
+                    pool = window.historyDB[mode];
+                }
+
+                if(!pool || pool.length === 0) {
+                    alert("No questions found! Did you create the JS files?");
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    return;
+                }
+
+                // Random Shuffle & Limit to 50
+                // (If fewer than 50 exist, duplicate them to fill)
+                while(pool.length < this.totalQ) pool = pool.concat(pool);
+                
+                // Fisher-Yates Shuffle
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                
+                this.data = pool.slice(0, this.totalQ);
+                this.currIndex = 0;
+                this.score = 0;
+
+                // UI Transition
+                document.getElementById('loading-overlay').style.display = 'none';
+                this.switchScreen('screen-quiz');
+                this.renderQuestion();
+            },
+
+            switchScreen: function(id) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            },
+
+            renderQuestion: function() {
+                const q = this.data[this.currIndex];
+                
+                // Update HUD
+                document.getElementById('q-number').innerText = `Question ${this.currIndex + 1}/${this.totalQ}`;
+                document.getElementById('score-live').innerText = `Score: ${this.score}`;
+                document.getElementById('progress-bar').style.width = `${((this.currIndex)/this.totalQ)*100}%`;
+                
+                // Text Animation
+                const qBox = document.getElementById('q-text');
+                qBox.style.opacity = 0;
+                setTimeout(() => {
+                    qBox.innerText = q.q;
+                    qBox.style.opacity = 1;
+                }, 200);
+
+                // Options
+                const cont = document.getElementById('opt-container');
+                cont.innerHTML = '';
+                
+                // Shuffle Options
+                let opts = [...q.options];
+                opts.sort(() => Math.random() - 0.5);
+
+                opts.forEach(optText => {
+                    const btn = document.createElement('button');
+                    btn.className = 'opt-btn';
+                    btn.innerText = optText;
+                    btn.onclick = (e) => this.handleAnswer(btn, optText, q.ans, e);
+                    cont.appendChild(btn);
+                });
+            },
+
+            handleAnswer: function(btn, selected, correct, event) {
+                // Lock buttons
+                const all = document.querySelectorAll('.opt-btn');
+                all.forEach(b => b.disabled = true);
+
+                if(selected === correct) {
+                    btn.classList.add('correct');
+                    AudioFX.correct();
+                    VFX.burst(event.clientX, event.clientY);
+                    this.score++;
+                } else {
+                    btn.classList.add('wrong');
+                    AudioFX.wrong();
+                    // Highlight correct
+                    all.forEach(b => {
+                        if(b.innerText === correct) b.classList.add('correct');
+                    });
+                }
+
+                // Next Delay
+                setTimeout(() => {
+                    this.currIndex++;
+                    if(this.currIndex < this.totalQ) {
+                        this.renderQuestion();
+                    } else {
+                        this.endGame();
+                    }
+                }, 1500);
+            },
+
+            endGame: function() {
+                this.switchScreen('screen-results');
+                AudioFX.victory();
+                
+                const percent = Math.round((this.score / this.totalQ) * 100);
+                
+                document.getElementById('final-score').innerText = this.score;
+                document.getElementById('final-percent').innerText = percent + "%";
+                document.getElementById('final-correct').innerText = this.score;
+                document.getElementById('final-wrong').innerText = this.totalQ - this.score;
+
+                // Grade Calculation
+                const gradeEl = document.getElementById('final-grade');
+                const remEl = document.getElementById('remarks');
+                let grade = 'F';
+                
+                gradeEl.className = 'grade-circle'; // reset
+                
+                if(percent >= 90) { grade='S'; gradeEl.classList.add('grade-S'); remEl.innerText="Perfect! You are a Historian!"; }
+                else if(percent >= 75) { grade='A'; gradeEl.classList.add('grade-A'); remEl.innerText="Great job! Very strong knowledge."; }
+                else if(percent >= 60) { grade='B'; gradeEl.classList.add('grade-B'); remEl.innerText="Good! But keep revising."; }
+                else if(percent >= 40) { grade='C'; gradeEl.classList.add('grade-C'); remEl.innerText="Passable, but needs work."; }
+                else { grade='F'; gradeEl.classList.add('grade-F'); remEl.innerText="Uh oh... Time to read NCERT again."; }
+
+                gradeEl.innerText = grade;
+            }
+        };
+    </script>
+</body>
+</html>
