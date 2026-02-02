@@ -2,697 +2,958 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate History Quiz Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TITANIUM V8: APEX SUITE</title>
+    
     <style>
-        /* --- CORE VISUALS & THEME --- */
+        /* ==========================================================================
+           1. CORE CSS VARIABLES & THEME ENGINE
+           ==========================================================================
+        */
         :root {
-            --primary: #00f7ff;
-            --secondary: #ff0055;
-            --accent: #ffee00;
-            --bg-deep: #050510;
-            --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-glow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+            /* SYSTEM DEFAULTS */
+            --primary: #ffffff;
+            --secondary: #a0a0a0;
+            --accent: #00d9ff;
+            
+            --bg-deep: #050505;
+            --panel-bg: rgba(18, 18, 24, 0.90); /* Darker for better text contrast */
+            --glass-border: rgba(255, 255, 255, 0.15);
+            
+            --font-stack: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --shadow-glow: 0 0 25px rgba(0, 217, 255, 0.2);
+            
+            --correct-green: #00ff88;
+            --wrong-red: #ff3355;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; user-select: none; }
+        /* HISTORY THEME (CYBER BLUE) */
+        body.mode-history {
+            --primary: #00f2ff;
+            --secondary: #006aff;
+            --accent: #00f2ff;
+            --bg-deep: #020b14;
+            --shadow-glow: 0 0 40px rgba(0, 242, 255, 0.3);
+        }
 
+        /* CIVICS THEME (PARLIAMENT GOLD) */
+        body.mode-civics {
+            --primary: #ffcc00;
+            --secondary: #ff8800;
+            --accent: #ffcc00;
+            --bg-deep: #140f00;
+            --shadow-glow: 0 0 40px rgba(255, 204, 0, 0.3);
+        }
+
+        /* EXAM THEME (CRITICAL RED) */
+        body.mode-exam {
+            --primary: #ff0055;
+            --secondary: #cc0000;
+            --accent: #ff0055;
+            --bg-deep: #140005;
+            --shadow-glow: 0 0 50px rgba(255, 0, 85, 0.5);
+        }
+
+        /* ADMIN THEME (MATRIX GREEN) */
+        body.mode-admin {
+            --primary: #00ff00;
+            --secondary: #004400;
+            --accent: #00ff00;
+            --bg-deep: #000a00;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ==========================================================================
+           2. GLOBAL LAYOUT & RESET
+           ==========================================================================
+        */
+        * { 
+            margin: 0; padding: 0; 
+            box-sizing: border-box; 
+            font-family: var(--font-stack); 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
         body {
             background-color: var(--bg-deep);
             color: white;
-            height: 100vh;
+            height: 100vh; width: 100vw;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            perspective: 1000px;
+            display: flex; justify-content: center; align-items: center;
+            transition: background 0.8s ease;
         }
 
-        /* --- BACKGROUND VFX CANVAS --- */
-        #vfx-canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: -1;
+        /* DYNAMIC CANVAS LAYERS */
+        #bg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; opacity: 0.5; }
+        #vfx-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
+        /* LOADER OVERLAY */
+        #system-loader {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease;
         }
-
-        /* --- MAIN UI CONTAINER --- */
-        .app-container {
-            width: 95%;
-            max-width: 900px;
-            height: 85vh;
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 25px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            animation: introPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes introPop {
-            0% { opacity: 0; transform: scale(0.8) rotateX(10deg); }
-            100% { opacity: 1; transform: scale(1) rotateX(0deg); }
-        }
-
-        /* --- HEADER --- */
-        header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--glass-border);
-            background: rgba(0,0,0,0.2);
-        }
-        
-        h1 {
-            font-size: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: white;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
-        }
-        
-        .status-bar {
-            font-size: 0.9rem;
-            color: var(--primary);
-            margin-top: 5px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        /* --- SCREENS --- */
-        .screen {
-            flex: 1;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            padding: 30px;
-            overflow-y: auto;
-            align-items: center;
-        }
-
-        .screen.active {
-            display: flex;
-            animation: slideIn 0.5s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* --- MENU BUTTONS (CHAPTERS) --- */
-        .grid-menu {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            width: 100%;
-            padding: 10px;
-        }
-
-        .chapter-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-            border: 1px solid var(--glass-border);
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .chapter-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 4px; height: 100%;
-            background: var(--primary);
-            opacity: 0.5;
-            transition: 0.3s;
-        }
-
-        .chapter-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 247, 255, 0.1);
-            border-color: var(--primary);
-        }
-
-        .chapter-card:hover::before { opacity: 1; width: 100%; z-index: -1; }
-        .chapter-card h3 { font-size: 1.2rem; margin-bottom: 5px; z-index: 2; position: relative; }
-        .chapter-card p { font-size: 0.8rem; color: #aaa; z-index: 2; position: relative; }
-
-        .special-card { border-color: var(--secondary); }
-        .special-card::before { background: var(--secondary); }
-        
-        /* --- QUIZ AREA --- */
-        .progress-track {
-            width: 100%;
-            height: 6px;
-            background: rgba(255,255,255,0.1);
-            margin-bottom: 20px;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--primary);
-            box-shadow: 0 0 10px var(--primary);
-            transition: width 0.4s ease;
-        }
-
-        .question-box {
-            font-size: 1.4rem;
-            margin-bottom: 30px;
-            text-align: center;
-            line-height: 1.5;
-            min-height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .options-list { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 15px; }
-
-        .opt-btn {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 18px 25px;
-            border-radius: 12px;
-            color: white;
-            font-size: 1.1rem;
-            text-align: left;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .opt-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(5px); border-color: var(--primary); }
-        .opt-btn:active { transform: scale(0.98); }
-
-        .opt-btn.correct {
-            background: rgba(0, 255, 136, 0.2) !important;
-            border-color: #00ff88 !important;
-            color: #00ff88;
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
-            animation: pulseSuccess 0.5s;
-        }
-
-        .opt-btn.wrong {
-            background: rgba(255, 0, 85, 0.2) !important;
-            border-color: #ff0055 !important;
-            color: #ff0055;
-            animation: shake 0.4s;
-        }
-
-        @keyframes pulseSuccess { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
-
-        /* --- RESULTS SCREEN --- */
-        .grade-circle {
-            width: 150px; height: 150px;
+        .loader-ring {
+            width: 70px; height: 70px; 
+            border: 6px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent); 
             border-radius: 50%;
-            border: 5px solid var(--glass-border);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 4rem;
-            font-weight: bold;
-            margin: 20px auto;
-            text-shadow: 0 0 20px currentColor;
-            background: rgba(0,0,0,0.3);
-        }
-        
-        .grade-S { border-color: #ffee00; color: #ffee00; box-shadow: 0 0 30px rgba(255, 238, 0, 0.2); }
-        .grade-A { border-color: #00ff88; color: #00ff88; }
-        .grade-B { border-color: #00f7ff; color: #00f7ff; }
-        .grade-C { border-color: orange; color: orange; }
-        .grade-F { border-color: #ff0055; color: #ff0055; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            width: 100%;
-            max-width: 500px;
-            margin: 20px 0;
-        }
-
-        .stat-item {
-            background: rgba(255,255,255,0.05);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .stat-val { font-size: 1.5rem; font-weight: bold; }
-        .stat-label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; }
-
-        .action-btn {
-            background: linear-gradient(90deg, var(--primary), #00aaff);
-            color: #000;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 0 20px var(--primary);
-            transition: 0.3s;
-        }
-        .action-btn:hover { transform: scale(1.05); letter-spacing: 1px; }
-
-        /* --- LOADER --- */
-        #loading-overlay {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 100;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .spinner {
-            width: 50px; height: 50px;
-            border: 5px solid rgba(255,255,255,0.1);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 1s infinite linear;
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* ==========================================================================
+           3. MAINFRAME UI (GLASSMORPHISM)
+           ==========================================================================
+        */
+        .mainframe {
+            width: 98%; max-width: 1300px; height: 97vh;
+            background: var(--panel-bg);
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column;
+            overflow: hidden; position: relative;
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        /* HEADER */
+        header {
+            height: 80px; border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 30px; background: rgba(0,0,0,0.3); z-index: 100;
+        }
+        .brand-logo h1 {
+            font-size: 1.8rem; font-weight: 900; color: var(--primary);
+            text-transform: uppercase; letter-spacing: 2px;
+            text-shadow: 0 0 15px var(--primary); transition: color 0.5s;
+        }
+        .brand-logo span { font-size: 0.8rem; color: #888; letter-spacing: 1px; display: block; }
+
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        
+        .user-pill {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            padding: 8px 20px; border-radius: 30px; font-size: 0.9rem; color: #fff;
+            display: none; align-items: center; gap: 10px; font-weight: bold;
+        }
+        
+        .icon-btn {
+            background: none; border: 1px solid var(--glass-border); color: var(--primary);
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+            transition: 0.3s;
+        }
+        .icon-btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); transform: scale(1.1); }
+
+        /* ==========================================================================
+           4. SCREEN MANAGER
+           ==========================================================================
+        */
+        .screen-layer {
+            flex: 1; position: relative; overflow: hidden; width: 100%;
+        }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; /* Hidden state */
+            flex-direction: column; align-items: center;
+            padding: 20px 40px; 
+            overflow-y: auto; /* SCROLL IF CONTENT IS LONG */
+            opacity: 0; transform: scale(0.96) translateY(20px);
+            transition: opacity 0.4s var(--ease-elastic), transform 0.4s var(--ease-elastic);
+        }
+        
+        .screen.active {
+            display: flex; opacity: 1; transform: scale(1) translateY(0); z-index: 10;
+        }
+
+        /* CUSTOM SCROLLBARS */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        /* ==========================================================================
+           5. UI COMPONENTS (Buttons, Inputs)
+           ==========================================================================
+        */
+        /* HERO BUTTONS */
+        .btn-titan {
+            padding: 16px 50px; border-radius: 50px; border: none;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff; font-weight: 900; font-size: 1.2rem; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: 0.3s;
+            position: relative; overflow: hidden; margin-top: 20px;
+        }
+        .btn-titan:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); }
+        .btn-titan:active { transform: scale(0.97); }
+
+        /* NAV BUTTONS (Back) */
+        .btn-nav {
+            align-self: flex-start; margin-bottom: 20px;
+            background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid var(--glass-border);
+            padding: 10px 25px; border-radius: 30px; cursor: pointer; transition: 0.3s;
+            font-weight: bold; font-size: 0.9rem;
+        }
+        .btn-nav:hover { background: #fff; color: #000; border-color: #fff; }
+
+        /* INPUT FIELDS */
+        .holo-field {
+            width: 100%; padding: 18px; background: rgba(0,0,0,0.5);
+            border: 1px solid var(--glass-border); color: #fff; border-radius: 12px;
+            font-size: 1.1rem; margin-bottom: 25px; outline: none; transition: 0.3s;
+        }
+        .holo-field:focus { border-color: var(--primary); box-shadow: 0 0 20px var(--primary); background: rgba(0,0,0,0.7); }
+
+        /* ==========================================================================
+           6. SPECIFIC SCREENS DESIGN
+           ==========================================================================
+        */
+        /* LOGIN */
+        .login-card {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border);
+            padding: 60px; border-radius: 25px; width: 100%; max-width: 500px;
+            text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+            backdrop-filter: blur(15px); margin-top: 5vh;
+        }
+
+        /* STUDENT DASHBOARD */
+        .dash-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px; width: 100%; max-width: 1100px; margin-top: 20px;
+        }
+        .dash-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+            padding: 25px; border-radius: 20px; display: flex; flex-direction: column;
+            transition: 0.3s;
+        }
+        .dash-card:hover { background: rgba(255,255,255,0.06); border-color: var(--primary); }
+        
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1rem; color: #aaa; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
+        .stat-val { font-size: 1.8rem; font-weight: bold; color: var(--primary); }
+        .history-list { max-height: 250px; overflow-y: auto; font-size: 0.9rem; }
+        .hist-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: #eee; }
+
+        /* MODULES (History/Civics) */
+        .mod-container { display: flex; gap: 40px; flex-wrap: wrap; justify-content: center; width: 100%; margin-top: 40px; }
+        .mod-box {
+            width: 280px; height: 360px; background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border); border-radius: 25px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; transition: 0.4s; position: relative; overflow: hidden;
+        }
+        .mod-box:hover { 
+            transform: translateY(-15px) scale(1.02); 
+            border-color: var(--primary); 
+            background: rgba(255,255,255,0.08); 
+            box-shadow: var(--shadow-glow); 
+        }
+        .mod-ico { font-size: 6rem; margin-bottom: 25px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.1)); transition: 0.4s; }
+        .mod-box:hover .mod-ico { transform: scale(1.1) rotate(5deg); }
+        
+        /* QUIZ INTERFACE (The Critical Part) */
+        .hud-bar {
+            width: 100%; max-width: 1000px; display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 30px; background: rgba(0,0,0,0.6); border-radius: 50px; 
+            border: 1px solid var(--glass-border); margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .hud-val { font-family: 'Courier New', monospace; font-weight: bold; color: var(--primary); font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+
+        .q-display { 
+            font-size: 1.8rem; text-align: center; margin-bottom: 50px; 
+            width: 100%; max-width: 1000px; line-height: 1.5; min-height: 100px; 
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            /* Fix for text overflow */
+            word-wrap: break-word; overflow-wrap: break-word;
+        }
+
+        /* MCQ BUTTONS */
+        .mcq-container { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; width: 100%; max-width: 1000px; }
+        
+        .option-btn {
+            background: rgba(255,255,255,0.04); border: 2px solid var(--glass-border);
+            padding: 25px; border-radius: 15px; cursor: pointer; 
+            text-align: center; font-size: 1.2rem; font-weight: 500;
+            transition: 0.2s; position: relative; color: #ddd;
+            /* Fix for text overflow in buttons */
+            white-space: normal; line-height: 1.4; min-height: 80px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .option-btn:hover { background: rgba(255,255,255,0.1); border-color: #fff; transform: translateY(-3px); }
+        
+        /* Highlight Correct/Wrong */
+        .option-btn.correct { 
+            background: rgba(0, 255, 136, 0.2) !important; 
+            border-color: var(--correct-green) !important; 
+            color: var(--correct-green) !important; 
+            box-shadow: 0 0 30px rgba(0,255,136,0.3);
+        }
+        
+        .option-btn.wrong { 
+            background: rgba(255, 51, 85, 0.2) !important; 
+            border-color: var(--wrong-red) !important; 
+            color: var(--wrong-red) !important; 
+            opacity: 0.7;
+        }
+        .option-btn.wrong::after { content: "❌"; position: absolute; right: 20px; }
+        .option-btn.correct::after { content: "✔"; position: absolute; right: 20px; }
+
+        /* LIFELINE BUTTON (50/50) */
+        .lifeline-area { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; width: 100%; }
+        .life-btn {
+            background: rgba(0,0,0,0.5); border: 1px solid var(--primary); color: var(--primary);
+            padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem;
+        }
+        .life-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #555; color: #555; }
+
+        @media (max-width: 800px) {
+            .mcq-container { grid-template-columns: 1fr; }
+            .mod-box { width: 100%; height: 120px; flex-direction: row; justify-content: flex-start; padding: 0 30px; }
+            .mod-ico { font-size: 3rem; margin: 0 20px 0 0; }
+            .q-display { font-size: 1.4rem; }
+        }
+
+        /* RESULT */
+        .result-paper {
+            background: #fff; color: #111; padding: 60px; width: 100%; max-width: 550px;
+            border-radius: 10px; text-align: center; position: relative;
+            transform: rotate(-1deg); box-shadow: 0 0 120px rgba(0,0,0,0.9);
+            animation: paperDrop 0.8s var(--ease-elastic);
+        }
+        @keyframes paperDrop { from { opacity: 0; transform: translateY(-100px) scale(0.8) rotate(5deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(-1deg); } }
+        
+        .stamp {
+            position: absolute; top: 40%; right: 30px;
+            border: 8px solid #000; font-size: 5rem; font-weight: 900;
+            padding: 15px; transform: rotate(-20deg) scale(2); opacity: 0;
+            animation: stampIn 0.3s 1s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes stampIn { to { opacity: 0.7; transform: rotate(-20deg) scale(1); } }
+        .stamp.pass { color: #009900; border-color: #009900; }
+        .stamp.fail { color: #cc0000; border-color: #cc0000; }
+
+        /* ADMIN TABLE */
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; font-family: monospace; }
+        .admin-table th { text-align: left; border-bottom: 1px solid var(--primary); color: var(--primary); padding: 12px; }
+        .admin-table td { border-bottom: 1px solid #333; padding: 12px; color: #ccc; }
+        .admin-table tr:hover td { background: rgba(0,255,0,0.1); color: #fff; }
 
     </style>
 </head>
 <body>
 
+    <canvas id="bg-canvas"></canvas>
     <canvas id="vfx-canvas"></canvas>
-
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <p style="margin-top: 15px; color: var(--primary);">Loading Chapter Data...</p>
+    
+    <div id="system-loader">
+        <div class="loader-ring"></div>
+        <p style="margin-top:25px; color:#aaa; font-family:monospace; letter-spacing:4px; font-size:1.2rem;">SYSTEM INITIALIZING...</p>
     </div>
 
-    <div class="app-container">
+    <div class="mainframe">
         <header>
-            <h1>History Master Class 9</h1>
-            <div class="status-bar" id="status-text">Select a module to begin</div>
+            <div class="brand-logo">
+                <h1>Titanium <span style="font-weight:100; opacity:0.6;">V8</span></h1>
+                <span>ACADEMIC SUITE</span>
+            </div>
+            <div class="header-controls">
+                <div class="user-pill" id="user-display">
+                    <span id="u-name">Student</span>
+                    <span style="opacity:0.5;">|</span>
+                    <span id="u-roll">00</span>
+                </div>
+                <button class="icon-btn" onclick="AudioSys.toggleMusic()" title="Toggle Ambience">🎵</button>
+                <button class="icon-btn" onclick="AudioSys.toggle()" title="Toggle SFX">🔊</button>
+            </div>
         </header>
 
-        <div id="screen-menu" class="screen active">
-            <h2 style="margin-bottom: 20px; color: #ddd;">Available Chapters</h2>
-            <div class="grid-menu">
-                <div class="chapter-card" onclick="Engine.loadChapter(1)">
-                    <h3>Ch 1: French Revolution</h3>
-                    <p>Storming of Bastille & The Estates</p>
-                </div>
-                <div class="chapter-card" onclick="Engine.loadChapter(2)">
-                    <h3>Ch 2: Socialism & Russia</h3>
-                    <p>Bolsheviks, Lenin & The Duma</p>
-                </div>
-                <div class="chapter-card" onclick="Engine.loadChapter(3)">
-                    <h3>Ch 3: Nazism & Hitler</h3>
-                    <p>Rise of Dictatorship & WWII</p>
-                </div>
-                <div class="chapter-card" onclick="Engine.loadChapter(4)">
-                    <h3>Ch 4: Forest Society</h3>
-                    <p>Colonialism & Scientific Forestry</p>
-                </div>
-                <div class="chapter-card" onclick="Engine.loadChapter(5)">
-                    <h3>Ch 5: Pastoralists</h3>
-                    <p>Nomadic Communities & Modernity</p>
-                </div>
-                <div class="chapter-card special-card" onclick="Engine.loadChapter('all')">
-                    <h3>♾️ GRAND MOCK TEST</h3>
-                    <p>Mix of All Chapters (50 Qs)</p>
+        <div class="screen-layer">
+
+            <div id="scr-login" class="screen active">
+                <div class="login-card">
+                    <h2 style="margin-bottom:40px; font-weight:300; letter-spacing:3px;">SECURE LOGIN</h2>
+                    
+                    <input type="text" id="inp-name" class="holo-field" placeholder="FULL NAME">
+                    <input type="number" id="inp-roll" class="holo-field" placeholder="ROLL NUMBER">
+                    <select id="inp-sec" class="holo-field" style="background:#111;">
+                        <option>Section A</option>
+                        <option>Section B</option>
+                        <option>Section C</option>
+                    </select>
+
+                    <button class="btn-titan" onclick="Core.login()">ACCESS PORTAL</button>
+                    <p style="margin-top:30px; font-size:0.8rem; color:#666;">Annual Assessment System 2026</p>
                 </div>
             </div>
-        </div>
 
-        <div id="screen-quiz" class="screen">
-            <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
-            <div style="display:flex; justify-content:space-between; width:100%; max-width:700px; color:#888; margin-bottom:10px;">
-                <span id="q-number">Question 1</span>
-                <span id="score-live">Score: 0</span>
-            </div>
-            
-            <div class="question-box" id="q-text">Loading Question...</div>
-            
-            <div class="options-list" id="opt-container">
-                </div>
-        </div>
+            <div id="scr-dashboard" class="screen">
+                <h2 style="font-size:2.2rem; letter-spacing:1px; margin-bottom:20px;">DASHBOARD</h2>
+                <div class="dash-grid">
+                    <div class="dash-card">
+                        <h3 style="color:var(--primary); margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">STUDENT PROFILE</h3>
+                        <div class="stat-row"><span>Name</span> <span style="color:#fff" id="dash-name">--</span></div>
+                        <div class="stat-row"><span>Roll / Sec</span> <span style="color:#fff" id="dash-roll">--</span></div>
+                        <div class="stat-row"><span>Status</span> <span style="color:lime">ONLINE</span></div>
+                    </div>
+                    
+                    <div class="dash-card">
+                        <h3 style="color:var(--primary); margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">PERFORMANCE</h3>
+                        <div class="stat-row"><span>Tests Taken</span> <span class="stat-val" id="dash-tests">0</span></div>
+                        <div class="stat-row"><span>Best Score</span> <span class="stat-val" id="dash-best">0</span></div>
+                    </div>
 
-        <div id="screen-results" class="screen">
-            <h2 style="font-size:2rem; margin-bottom:10px;">Quiz Complete!</h2>
-            <div class="grade-circle" id="final-grade">A</div>
-            
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-val" id="final-score">0</div>
-                    <div class="stat-label">Total Score</div>
+                    <div class="dash-card" style="grid-column: 1 / -1;">
+                        <h3 style="color:var(--primary); margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">RECENT ACTIVITY LOG</h3>
+                        <div class="history-list" id="dash-history">
+                            <div style="text-align:center; color:#555; margin-top:30px;">No activity recorded yet.</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-val" id="final-percent">0%</div>
-                    <div class="stat-label">Accuracy</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-val" id="final-correct">0</div>
-                    <div class="stat-label">Correct</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-val" id="final-wrong">0</div>
-                    <div class="stat-label">Wrong</div>
+                <div style="display:flex; gap:20px; margin-top:30px;">
+                    <button class="btn-titan" onclick="Core.nav('scr-modules')">START NEW TEST</button>
+                    <button class="btn-nav" style="border-color:red; color:red; margin-top:20px;" onclick="Core.logout()">LOGOUT</button>
                 </div>
             </div>
-            
-            <div id="remarks" style="color:#bbb; margin-bottom: 20px; font-style: italic;">Excellent work!</div>
 
-            <button class="action-btn" onclick="location.reload()">Return to Menu</button>
+            <div id="scr-modules" class="screen">
+                <button class="btn-nav" onclick="Core.nav('scr-dashboard')">← DASHBOARD</button>
+                <h2 style="font-size:2.5rem; letter-spacing:2px; margin-bottom:40px;">SELECT MODULE</h2>
+                
+                <div class="mod-container">
+                    <div class="mod-box" onclick="Core.setTheme('history')">
+                        <div class="mod-ico">📜</div>
+                        <h3>HISTORY</h3>
+                    </div>
+                    <div class="mod-box" onclick="Core.setTheme('civics')">
+                        <div class="mod-ico">⚖️</div>
+                        <h3>CIVICS</h3>
+                    </div>
+                    <div class="mod-box" onclick="Core.setTheme('exam')">
+                        <div class="mod-ico">📝</div>
+                        <h3>MOCK EXAM</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="scr-chapters" class="screen">
+                <button class="btn-nav" onclick="Core.nav('scr-modules')">← MODULES</button>
+                <h2 id="ch-title" style="margin-bottom:30px; color:var(--primary); font-size:2rem;">CHAPTERS</h2>
+                <div class="mod-container" id="ch-list" style="justify-content: flex-start; gap: 20px;"></div>
+            </div>
+
+            <div id="scr-quiz" class="screen">
+                <div class="lifeline-area" id="lifelines" style="display:none;">
+                    <button class="life-btn" onclick="Core.useLifeline('5050', this)">50/50</button>
+                    <button class="life-btn" onclick="AudioSys.readQuestion()">🗣️ READ</button>
+                </div>
+
+                <div class="hud-bar">
+                    <span class="hud-val" id="timer">00:00</span>
+                    <span class="hud-val" id="tracker">1/50</span>
+                    <span class="hud-val" style="color:#fff;">PTS: <span id="score-box" style="color:var(--primary)">0</span></span>
+                </div>
+                
+                <div class="q-display" id="q-text">Loading...</div>
+
+                <div class="mcq-container" id="mcq-area"></div>
+
+                <div id="text-area" style="display:none; width:100%; max-width:700px; flex-direction:column; gap:20px;">
+                    <input type="text" id="txt-ans" class="holo-field" placeholder="Type your answer here..." style="font-size:1.3rem;">
+                    <button class="btn-titan" onclick="Core.checkText()">SUBMIT ANSWER</button>
+                    <div id="hint-msg" style="text-align:center; color:#ff4444; display:none; font-size:1.2rem; font-weight:bold;"></div>
+                </div>
+            </div>
+
+            <div id="scr-result" class="screen">
+                <div class="result-paper">
+                    <div style="border-bottom:3px solid #000; margin-bottom:20px; padding-bottom:15px;">
+                        <h2 style="font-size:2.5rem; font-weight:900;">REPORT CARD</h2>
+                        <p style="color:#555; font-size:1rem; font-weight:bold;">ANNUAL SESSION 2026</p>
+                    </div>
+                    <div style="text-align:left; font-size:1.2rem; line-height:1.8; color:#222;">
+                        <p><strong>Name:</strong> <span id="res-name">--</span></p>
+                        <p><strong>Roll No:</strong> <span id="res-roll">--</span></p>
+                        <p><strong>Subject:</strong> <span id="res-sub">--</span></p>
+                        <p><strong>Date:</strong> <span id="res-date">--</span></p>
+                    </div>
+                    <div style="margin:40px 0;">
+                        <span style="font-size:5rem; font-weight:900;" id="res-score">0</span>
+                        <span style="font-size:2.5rem; color:#888;">/50</span>
+                    </div>
+                    <div class="stamp" id="res-stamp">PASS</div>
+                </div>
+                <div style="display:flex; gap:20px; margin-top:40px;">
+                    <button class="btn-titan" onclick="Core.finishToDash()">RETURN TO DASHBOARD</button>
+                    <button class="btn-nav" style="border-color:red; color:red;" onclick="Core.logout()">LOGOUT</button>
+                </div>
+            </div>
+
+            <div id="scr-admin" class="screen">
+                <div style="width:100%; max-width:1000px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="color:var(--primary); font-size:2rem;">ADMIN CONSOLE [SNEHA]</h2>
+                        <button class="btn-nav" style="border-color:var(--primary); color:var(--primary); margin:0;" onclick="Core.logout()">EXIT</button>
+                    </div>
+                    
+                    <div style="background:rgba(0,30,0,0.9); border:1px solid var(--primary); margin-top:30px; padding:30px; border-radius:15px; min-height:500px; overflow-x:auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>NAME</th>
+                                    <th>ROLL</th>
+                                    <th>SEC</th>
+                                    <th>SUBJECT</th>
+                                    <th>SCORE</th>
+                                    <th>DATE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-list"></tbody>
+                        </table>
+                        <div id="admin-empty" style="text-align:center; color:#0f0; margin-top:100px; font-family:monospace;">> DATABASE EMPTY_</div>
+                    </div>
+                    <button class="btn-nav" style="border-color:red; color:red; margin-top:20px;" onclick="localStorage.clear(); location.reload();">FORMAT DATABASE</button>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        const AudioFX = {
-            ctx: new (window.AudioContext || window.webkitAudioContext)(),
+        // --- GLOBAL STORAGE ---
+        window.historyDB = {}; window.civicsDB = {}; window.examDB = {};
+
+        // --- AUDIO ENGINE V8 (SAFE) ---
+        const AudioSys = {
+            muted: false, ctx: null, synth: window.speechSynthesis,
+            toggle: function() { this.muted = !this.muted; },
+            toggleMusic: function() { alert("Ambience toggled (Placeholder)"); }, // Placeholder for music
             
-            init: function() { if(this.ctx.state === 'suspended') this.ctx.resume(); },
-            
-            playTone: function(freq, type, duration, vol=0.1) {
-                this.init();
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + duration);
+            play: function(type) {
+                if(this.muted) return;
+                try {
+                    if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    if(this.ctx.state === 'suspended') this.ctx.resume();
+                    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+                    o.connect(g); g.connect(this.ctx.destination);
+                    const t=this.ctx.currentTime;
+                    
+                    if(type==='click') {
+                        o.frequency.value=800; g.gain.value=0.05; o.start(); o.stop(t+0.05);
+                    } else if(type==='correct') {
+                        o.type='triangle'; o.frequency.setValueAtTime(400,t); o.frequency.linearRampToValueAtTime(800,t+0.1);
+                        g.gain.setValueAtTime(0.1,t); g.gain.linearRampToValueAtTime(0,t+0.3);
+                        o.start(); o.stop(t+0.3);
+                    } else if(type==='wrong') {
+                        o.type='sawtooth'; o.frequency.setValueAtTime(150,t); g.gain.value=0.1;
+                        g.gain.linearRampToValueAtTime(0,t+0.3); o.start(); o.stop(t+0.3);
+                    }
+                } catch(e) {}
             },
 
-            click: function() { this.playTone(800, 'sine', 0.1); },
-            
-            correct: function() { 
-                // High pitch success chord
-                this.playTone(600, 'sine', 0.3);
-                setTimeout(() => this.playTone(800, 'sine', 0.4), 100);
-                setTimeout(() => this.playTone(1200, 'triangle', 0.5), 200);
-            },
-            
-            wrong: function() {
-                // Low pitch error buzz
-                this.playTone(150, 'sawtooth', 0.3);
-                setTimeout(() => this.playTone(100, 'sawtooth', 0.4), 100);
-            },
-
-            victory: function() {
-                // Fanfare
-                [523, 659, 784, 1046].forEach((f, i) => {
-                    setTimeout(() => this.playTone(f, 'square', 0.6, 0.2), i*150);
-                });
+            readQuestion: function() {
+                if(this.muted) return;
+                const txt = document.getElementById('q-text').innerText;
+                const u = new SpeechSynthesisUtterance(txt);
+                this.synth.speak(u);
             }
         };
-    </script>
 
-    <script>
-        const VFX = {
-            canvas: document.getElementById('vfx-canvas'),
-            ctx: document.getElementById('vfx-canvas').getContext('2d'),
+        // --- CORE LOGIC V8 ---
+        const Core = {
+            user: null, mode: 'history', queue: [], idx: 0, score: 0, timer: null,
+
+            // 1. LOGIN
+            login: function() {
+                const n = document.getElementById('inp-name').value.trim();
+                const r = document.getElementById('inp-roll').value;
+                const s = document.getElementById('inp-sec').value;
+
+                if(!n) { alert("Please enter Name"); return; }
+                
+                // ADMIN BYPASS
+                if(n.toLowerCase() === 'sneha' || n.toLowerCase() === 'sneha goyal') {
+                    this.loadAdmin(); return;
+                }
+
+                if(!r) { alert("Please enter Roll No"); return; }
+
+                this.user = { name:n, roll:r, sec:s };
+                document.getElementById('u-name').innerText = n.split(' ')[0];
+                document.getElementById('u-roll').innerText = r;
+                document.getElementById('user-display').style.display='flex';
+                
+                AudioSys.play('click');
+                this.loadDashboard();
+            },
+
+            // 2. DASHBOARD LOGIC
+            loadDashboard: function() {
+                this.nav('scr-dashboard');
+                document.body.className = ''; // Reset theme
+                BG.setTheme('default');
+                
+                document.getElementById('dash-name').innerText = this.user.name;
+                document.getElementById('dash-roll').innerText = `${this.user.roll} (${this.user.sec})`;
+                
+                let allData = JSON.parse(localStorage.getItem('student_personal_data') || "[]");
+                let myData = allData.filter(x => x.name === this.user.name);
+                
+                document.getElementById('dash-tests').innerText = myData.length;
+                let best = 0; myData.forEach(d => { if(d.score > best) best = d.score; });
+                document.getElementById('dash-best').innerText = best + "/50";
+                
+                const list = document.getElementById('dash-history');
+                list.innerHTML = "";
+                if(myData.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; color:#555; margin-top:20px;">No tests taken yet.</div>';
+                } else {
+                    myData.slice().reverse().forEach(item => {
+                        let div = document.createElement('div');
+                        div.className = 'hist-item';
+                        div.innerHTML = `<span>${item.sub}</span> <span>${item.date}</span> <span style="color:${item.score>=20?'lime':'red'}">${item.score}</span>`;
+                        list.appendChild(div);
+                    });
+                }
+            },
+
+            // 3. THEME & LOAD
+            setTheme: function(m) {
+                this.mode = m;
+                document.body.className = `mode-${m}`;
+                BG.setTheme(m);
+                AudioSys.play('click');
+                if(m==='exam') this.loadExam(); else this.renderCh();
+            },
+
+            renderCh: function() {
+                const list = document.getElementById('ch-list'); list.innerHTML="";
+                const hN=["French Rev","Socialism","Nazism","Forests","Pastoralists"];
+                const cN=["Democracy","Constitution","Elections","Institutions","Rights"];
+                const names = this.mode==='history'?hN:cN;
+
+                document.getElementById('ch-title').innerText = this.mode.toUpperCase();
+
+                for(let i=1; i<=5; i++) {
+                    const d=document.createElement('div'); d.className='mod-box';
+                    d.style.height='250px'; d.style.width='220px';
+                    d.innerHTML = `<div style="font-size:4rem; margin-bottom:15px;">${i}</div><h3>Ch ${i}</h3><p style="font-size:0.8rem; color:#aaa;">${names[i-1]}</p>`;
+                    d.onclick=()=>this.loadData(i);
+                    list.appendChild(d);
+                }
+                const all=document.createElement('div'); all.className='mod-box';
+                all.style.height='250px'; all.style.width='220px'; all.style.borderColor='var(--primary)';
+                all.innerHTML = `<div style="font-size:4rem; margin-bottom:15px;">∞</div><h3>FULL MIX</h3>`;
+                all.onclick=()=>this.loadData('all');
+                list.appendChild(all);
+                this.nav('scr-chapters');
+            },
+
+            loadData: function(k) {
+                document.getElementById('system-loader').style.display='flex';
+                let suffix = this.mode==='history'?'':'c';
+                if(k==='all') {
+                    let c=0; for(let i=1;i<=5;i++) this.inject(`ch${i}${suffix}.js`, ()=>{c++; if(c===5) this.start('all');});
+                } else {
+                    this.inject(`ch${k}${suffix}.js`, ()=>this.start(k));
+                }
+            },
+
+            loadExam: function() {
+                document.getElementById('system-loader').style.display='flex';
+                this.inject('exam.js', ()=>{
+                    if(window.examDB && window.examDB.questions) {
+                        this.queue = window.examDB.questions;
+                        this.initQ();
+                    } else {
+                        alert("Exam file missing. Using History fallback.");
+                        this.mode='history'; this.loadData('all');
+                    }
+                });
+            },
+
+            inject: function(src, cb) {
+                if(document.querySelector(`script[src="${src}"]`)) { cb(); return; }
+                const s=document.createElement('script'); s.src=src; s.onload=cb;
+                s.onerror=()=>{alert("File Missing: "+src); document.getElementById('system-loader').style.display='none';};
+                document.body.appendChild(s);
+            },
+
+            // 4. QUIZ ENGINE
+            start: function(k) {
+                let db = this.mode==='history'?window.historyDB:window.civicsDB;
+                let pool = [];
+                if(k==='all') for(let x in db) pool=pool.concat(db[x]);
+                else pool = db[this.mode==='history'?k:k+'c'];
+
+                if(!pool || pool.length===0) { alert("Empty Data"); document.getElementById('system-loader').style.display='none'; return; }
+
+                this.queue = pool.map(q=>({...q, type:'mcq'})).sort(()=>Math.random()-.5).slice(0,50);
+                this.initQ();
+            },
+
+            initQ: function() {
+                document.getElementById('system-loader').style.display='none';
+                this.idx=0; this.score=0;
+                this.startTimer(this.mode==='exam'?30:15);
+                
+                // Show Lifelines in Exam Mode
+                document.getElementById('lifelines').style.display = (this.mode==='exam') ? 'flex' : 'none';
+                
+                this.nav('scr-quiz');
+                this.renderQ();
+            },
+
+            renderQ: function() {
+                const q = this.queue[this.idx];
+                document.getElementById('tracker').innerText = `${this.idx+1}/${this.queue.length}`;
+                document.getElementById('q-text').innerText = q.q;
+                document.getElementById('score-box').innerText = this.score;
+
+                const mcq = document.getElementById('mcq-area');
+                const txt = document.getElementById('text-area');
+                mcq.style.display='none'; txt.style.display='none';
+                document.getElementById('hint-msg').style.display='none';
+                document.getElementById('txt-ans').value='';
+
+                if(!q.type || q.type==='mcq' || q.type==='case') {
+                    mcq.style.display='grid'; mcq.innerHTML='';
+                    // Shuffle options
+                    let opts = [...q.options].sort(()=>Math.random()-.5);
+                    opts.forEach(o=>{
+                        const b=document.createElement('div'); b.className='option-btn'; b.innerText=o;
+                        // Store correctness for highlighting later
+                        if(o === q.ans) b.dataset.correct = "true";
+                        b.onclick=()=>this.checkMCQ(b,o,q.ans);
+                        mcq.appendChild(b);
+                    });
+                } else {
+                    txt.style.display='flex';
+                }
+            },
+
+            // SMART HIGHLIGHTING LOGIC
+            checkMCQ: function(btn, sel, corr) {
+                document.getElementById('mcq-area').style.pointerEvents='none';
+                
+                if(sel===corr) { 
+                    btn.classList.add('correct'); 
+                    this.score++; 
+                    AudioSys.play('correct'); 
+                    VFX.burst(); 
+                } else { 
+                    btn.classList.add('wrong'); 
+                    AudioSys.play('wrong');
+                    // Find and highlight the correct one
+                    const allBtns = document.getElementById('mcq-area').children;
+                    for(let b of allBtns) {
+                        if(b.dataset.correct === "true") b.classList.add('correct');
+                    }
+                }
+                setTimeout(()=>this.next(), 1500); // 1.5s delay to read
+            },
+
+            // SMART FUZZY TEXT CHECK
+            checkText: function() {
+                let val = document.getElementById('txt-ans').value.toLowerCase().trim();
+                let corr = this.queue[this.idx].ans.toLowerCase();
+                let q = this.queue[this.idx];
+                let ok = false;
+
+                if(val === corr) ok=true;
+                else if(q.keywords) {
+                    // Check if input contains at least one keyword
+                    if(q.keywords.some(k => val.includes(k.toLowerCase()))) ok=true;
+                }
+                else if(corr.length > 4 && val.includes(corr)) ok=true;
+
+                if(ok) {
+                    this.score++; AudioSys.play('correct'); VFX.burst();
+                    setTimeout(()=>this.next(), 600);
+                } else {
+                    AudioSys.play('wrong');
+                    const h=document.getElementById('hint-msg');
+                    h.style.display='block'; h.innerText=`Correct Answer: ${q.ans}`;
+                    setTimeout(()=>this.next(), 3000);
+                }
+            },
+
+            // LIFELINE LOGIC
+            useLifeline: function(type, btn) {
+                if(type === '5050') {
+                    btn.disabled = true;
+                    btn.style.opacity = "0.5";
+                    const allBtns = Array.from(document.getElementById('mcq-area').children);
+                    // Filter out the correct answer
+                    const wrongBtns = allBtns.filter(b => b.dataset.correct !== "true");
+                    // Remove 2 wrong answers
+                    for(let i=0; i<2 && i<wrongBtns.length; i++) {
+                        wrongBtns[i].style.visibility = "hidden";
+                    }
+                }
+            },
+
+            next: function() {
+                this.idx++;
+                if(this.idx<this.queue.length) { 
+                    document.getElementById('mcq-area').style.pointerEvents='auto';
+                    this.renderQ(); 
+                } else { this.finish(); }
+            },
+
+            finish: function() {
+                clearInterval(this.timer);
+                this.nav('scr-result');
+                document.getElementById('res-name').innerText = this.user.name;
+                document.getElementById('res-roll').innerText = this.user.roll;
+                document.getElementById('res-sub').innerText = this.mode.toUpperCase();
+                document.getElementById('res-score').innerText = this.score;
+                
+                const d = new Date();
+                document.getElementById('res-date').innerText = d.toLocaleDateString();
+
+                let pass = this.score>=20;
+                let s = document.getElementById('res-stamp');
+                if(pass) { s.innerText="PASS"; s.className="stamp pass"; VFX.confetti(); }
+                else { s.innerText="FAIL"; s.className="stamp fail"; }
+                
+                this.saveData();
+            },
+
+            saveData: function() {
+                let entry = {
+                    name: this.user.name, roll: this.user.roll, sec: this.user.sec,
+                    sub: this.mode.toUpperCase(), score: this.score, date: new Date().toLocaleDateString()
+                };
+                
+                let tDB = JSON.parse(localStorage.getItem('sneha_class_data') || "[]");
+                tDB.push(entry);
+                localStorage.setItem('sneha_class_data', JSON.stringify(tDB));
+
+                let sDB = JSON.parse(localStorage.getItem('student_personal_data') || "[]");
+                sDB.push(entry);
+                localStorage.setItem('student_personal_data', JSON.stringify(sDB));
+            },
+
+            finishToDash: function() { this.loadDashboard(); },
+            logout: function() { location.reload(); },
+
+            // ADMIN
+            loadAdmin: function() {
+                this.nav('scr-admin');
+                document.body.className = 'mode-admin';
+                const list = document.getElementById('admin-list');
+                const empty = document.getElementById('admin-empty');
+                list.innerHTML = "";
+                
+                let data = JSON.parse(localStorage.getItem('sneha_class_data') || "[]");
+                
+                if(data.length === 0) empty.style.display='block';
+                else {
+                    empty.style.display='none';
+                    data.reverse().forEach(row => {
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${row.name}</td><td>${row.roll}</td><td>${row.sec}</td><td>${row.sub}</td><td style="color:${row.score>=20?'lime':'red'}">${row.score}</td><td>${row.date}</td>`;
+                        list.appendChild(tr);
+                    });
+                }
+            },
+
+            nav: function(id) {
+                document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            },
+            startTimer: function(min) {
+                clearInterval(this.timer);
+                let t=min*60;
+                this.timer=setInterval(()=>{
+                    t--;
+                    let m=Math.floor(t/60), s=t%60;
+                    document.getElementById('timer').innerText=`${m}:${s<10?'0'+s:s}`;
+                    if(t<=0) this.finish();
+                },1000);
+            }
+        };
+
+        // --- BACKGROUND FX ENGINE ---
+        const BG = {
+            c: document.getElementById('bg-canvas'),
+            ctx: document.getElementById('bg-canvas').getContext('2d'),
+            mode: 'default',
             particles: [],
             
             init: function() {
-                this.resize();
-                window.addEventListener('resize', () => this.resize());
+                this.resize(); window.onresize=()=>this.resize();
                 this.createParticles();
-                this.animate();
+                this.loop();
             },
-            
-            resize: function() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
-            },
+            resize: function() { this.c.width=window.innerWidth; this.c.height=window.innerHeight; },
+            setTheme: function(m) { this.mode=m; this.createParticles(); },
             
             createParticles: function() {
-                for(let i=0; i<80; i++) {
-                    this.particles.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
-                        r: Math.random() * 2 + 1,
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: (Math.random() - 0.5) * 0.5,
-                        color: Math.random() > 0.5 ? '#00f7ff' : '#ff0055'
-                    });
-                }
-            },
+                this.particles = [];
+                let color = 'rgba(255,255,255,0.1)';
+                if(this.mode==='history') color='rgba(0,242,255,0.2)'; // Blue Rain
+                if(this.mode==='civics') color='rgba(255,204,0,0.2)'; // Gold Float
+                if(this.mode==='exam') color='rgba(255,0,85,0.2)'; // Red Pulse
 
-            burst: function(x, y) {
-                // Explosion effect
-                for(let i=0; i<20; i++) {
+                for(let i=0; i<60; i++) {
                     this.particles.push({
-                        x: x, y: y,
-                        r: Math.random() * 4 + 2,
-                        vx: (Math.random() - 0.5) * 10,
-                        vy: (Math.random() - 0.5) * 10,
-                        life: 1.0,
-                        color: '#ffee00'
+                        x: Math.random()*this.c.width,
+                        y: Math.random()*this.c.height,
+                        s: Math.random()*3,
+                        v: (Math.random()+0.5),
+                        c: color
                     });
                 }
             },
             
-            animate: function() {
-                this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-                
-                this.particles.forEach((p, index) => {
-                    // Update
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    
-                    // Boundary wrap
-                    if(p.x < 0) p.x = this.canvas.width;
-                    if(p.x > this.canvas.width) p.x = 0;
-                    if(p.y < 0) p.y = this.canvas.height;
-                    if(p.y > this.canvas.height) p.y = 0;
-                    
-                    // Draw
-                    this.ctx.globalAlpha = p.life ? p.life : 0.4;
-                    this.ctx.fillStyle = p.color;
-                    this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-                    this.ctx.fill();
-                    
-                    // Connect lines (Neural effect)
-                    this.particles.forEach(p2 => {
-                        let dx = p.x - p2.x;
-                        let dy = p.y - p2.y;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-                        if(dist < 100 && !p.life && !p2.life) {
-                            this.ctx.strokeStyle = `rgba(100, 200, 255, ${0.1 - dist/1000})`;
-                            this.ctx.lineWidth = 0.5;
-                            this.ctx.beginPath();
-                            this.ctx.moveTo(p.x, p.y);
-                            this.ctx.lineTo(p2.x, p2.y);
-                            this.ctx.stroke();
-                        }
-                    });
+            loop: function() {
+                this.ctx.clearRect(0,0,this.c.width,this.c.height);
+                this.particles.forEach(p => {
+                    if(this.mode==='history') p.y += p.v * 2; // Rain down
+                    else if(this.mode==='civics') p.y -= p.v; // Float up
+                    else p.y += Math.sin(Date.now()/1000) * p.v; // Pulse/Hover
 
-                    // Decay burst particles
-                    if(p.life) {
-                        p.life -= 0.05;
-                        p.r *= 0.9;
-                        if(p.life <= 0) this.particles.splice(index, 1);
-                    }
+                    if(p.y > this.c.height) p.y=0;
+                    if(p.y < 0) p.y=this.c.height;
+
+                    this.ctx.fillStyle = p.c;
+                    this.ctx.beginPath(); this.ctx.arc(p.x,p.y,p.s,0,Math.PI*2); this.ctx.fill();
                 });
-                
-                requestAnimationFrame(() => this.animate());
+                requestAnimationFrame(()=>this.loop());
             }
         };
-        VFX.init();
-    </script>
 
-    <script>
-        // Global DB storage (files will push to this)
-        window.historyDB = {};
-
-        const Engine = {
-            data: [],
-            currIndex: 0,
-            score: 0,
-            totalQ: 50,
-            
-            loadChapter: function(chId) {
-                AudioFX.click();
-                const overlay = document.getElementById('loading-overlay');
-                overlay.style.display = 'flex';
-                
-                // Dynamic Script Loader
-                if(chId === 'all') {
-                    // Load all 5 chapters
-                    let loaded = 0;
-                    for(let i=1; i<=5; i++) {
-                        this.injectScript(`ch${i}.js`, () => {
-                            loaded++;
-                            if(loaded === 5) this.startGame('all');
-                        });
-                    }
-                } else {
-                    this.injectScript(`ch${chId}.js`, () => {
-                        this.startGame(chId);
-                    });
-                }
+        // --- BURST VFX ---
+        const VFX = {
+            c: document.getElementById('vfx-canvas'), ctx: document.getElementById('vfx-canvas').getContext('2d'), parts: [],
+            init: function() { this.c.width=window.innerWidth; this.c.height=window.innerHeight; this.loop(); },
+            burst: function() {
+                let x=this.c.width/2, y=this.c.height/2;
+                for(let i=0;i<30;i++) this.parts.push({x:x,y:y,vx:(Math.random()-.5)*20,vy:(Math.random()-.5)*20,life:1,c:'rgba(0,255,136,'});
             },
-
-            injectScript: function(src, cb) {
-                if(document.querySelector(`script[src="${src}"]`)) {
-                    // Already loaded
-                    cb();
-                    return;
-                }
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = cb;
-                script.onerror = () => {
-                    alert(`ERROR: Could not find ${src}. Please ensure the file exists in the folder.`);
-                    document.getElementById('loading-overlay').style.display = 'none';
-                };
-                document.body.appendChild(script);
+            confetti: function() {
+                for(let i=0;i<100;i++) this.parts.push({x:this.c.width/2,y:this.c.height/2,vx:(Math.random()-.5)*25,vy:(Math.random()-1)*20,life:2,grav:0.5,c:`rgba(${Math.random()*255},${Math.random()*255},255,`});
             },
-
-            startGame: function(mode) {
-                let pool = [];
-                
-                // Aggregate questions
-                if(mode === 'all') {
-                    for(let k in window.historyDB) pool = pool.concat(window.historyDB[k]);
-                } else {
-                    pool = window.historyDB[mode];
-                }
-
-                if(!pool || pool.length === 0) {
-                    alert("No questions found! Did you create the JS files?");
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    return;
-                }
-
-                // Random Shuffle & Limit to 50
-                // (If fewer than 50 exist, duplicate them to fill)
-                while(pool.length < this.totalQ) pool = pool.concat(pool);
-                
-                // Fisher-Yates Shuffle
-                for (let i = pool.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [pool[i], pool[j]] = [pool[j], pool[i]];
-                }
-                
-                this.data = pool.slice(0, this.totalQ);
-                this.currIndex = 0;
-                this.score = 0;
-
-                // UI Transition
-                document.getElementById('loading-overlay').style.display = 'none';
-                this.switchScreen('screen-quiz');
-                this.renderQuestion();
-            },
-
-            switchScreen: function(id) {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                document.getElementById(id).classList.add('active');
-            },
-
-            renderQuestion: function() {
-                const q = this.data[this.currIndex];
-                
-                // Update HUD
-                document.getElementById('q-number').innerText = `Question ${this.currIndex + 1}/${this.totalQ}`;
-                document.getElementById('score-live').innerText = `Score: ${this.score}`;
-                document.getElementById('progress-bar').style.width = `${((this.currIndex)/this.totalQ)*100}%`;
-                
-                // Text Animation
-                const qBox = document.getElementById('q-text');
-                qBox.style.opacity = 0;
-                setTimeout(() => {
-                    qBox.innerText = q.q;
-                    qBox.style.opacity = 1;
-                }, 200);
-
-                // Options
-                const cont = document.getElementById('opt-container');
-                cont.innerHTML = '';
-                
-                // Shuffle Options
-                let opts = [...q.options];
-                opts.sort(() => Math.random() - 0.5);
-
-                opts.forEach(optText => {
-                    const btn = document.createElement('button');
-                    btn.className = 'opt-btn';
-                    btn.innerText = optText;
-                    btn.onclick = (e) => this.handleAnswer(btn, optText, q.ans, e);
-                    cont.appendChild(btn);
+            loop: function() {
+                this.ctx.clearRect(0,0,this.c.width,this.c.height);
+                this.parts.forEach((p,i)=>{
+                    p.x+=p.vx; p.y+=p.vy; if(p.grav) p.vy+=p.grav; p.life-=0.02;
+                    if(p.life<=0) this.parts.splice(i,1);
+                    this.ctx.beginPath(); this.ctx.arc(p.x,p.y,4,0,Math.PI*2); this.ctx.fillStyle=p.c+p.life+')'; this.ctx.fill();
                 });
-            },
-
-            handleAnswer: function(btn, selected, correct, event) {
-                // Lock buttons
-                const all = document.querySelectorAll('.opt-btn');
-                all.forEach(b => b.disabled = true);
-
-                if(selected === correct) {
-                    btn.classList.add('correct');
-                    AudioFX.correct();
-                    VFX.burst(event.clientX, event.clientY);
-                    this.score++;
-                } else {
-                    btn.classList.add('wrong');
-                    AudioFX.wrong();
-                    // Highlight correct
-                    all.forEach(b => {
-                        if(b.innerText === correct) b.classList.add('correct');
-                    });
-                }
-
-                // Next Delay
-                setTimeout(() => {
-                    this.currIndex++;
-                    if(this.currIndex < this.totalQ) {
-                        this.renderQuestion();
-                    } else {
-                        this.endGame();
-                    }
-                }, 1500);
-            },
-
-            endGame: function() {
-                this.switchScreen('screen-results');
-                AudioFX.victory();
-                
-                const percent = Math.round((this.score / this.totalQ) * 100);
-                
-                document.getElementById('final-score').innerText = this.score;
-                document.getElementById('final-percent').innerText = percent + "%";
-                document.getElementById('final-correct').innerText = this.score;
-                document.getElementById('final-wrong').innerText = this.totalQ - this.score;
-
-                // Grade Calculation
-                const gradeEl = document.getElementById('final-grade');
-                const remEl = document.getElementById('remarks');
-                let grade = 'F';
-                
-                gradeEl.className = 'grade-circle'; // reset
-                
-                if(percent >= 90) { grade='S'; gradeEl.classList.add('grade-S'); remEl.innerText="Perfect! You are a Historian!"; }
-                else if(percent >= 75) { grade='A'; gradeEl.classList.add('grade-A'); remEl.innerText="Great job! Very strong knowledge."; }
-                else if(percent >= 60) { grade='B'; gradeEl.classList.add('grade-B'); remEl.innerText="Good! But keep revising."; }
-                else if(percent >= 40) { grade='C'; gradeEl.classList.add('grade-C'); remEl.innerText="Passable, but needs work."; }
-                else { grade='F'; gradeEl.classList.add('grade-F'); remEl.innerText="Uh oh... Time to read NCERT again."; }
-
-                gradeEl.innerText = grade;
+                requestAnimationFrame(()=>this.loop());
             }
+        };
+
+        window.onload = () => {
+            setTimeout(()=>{ document.getElementById('system-loader').style.display='none'; BG.init(); VFX.init(); },1200);
         };
     </script>
 </body>
